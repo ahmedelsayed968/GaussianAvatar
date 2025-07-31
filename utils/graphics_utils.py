@@ -53,10 +53,10 @@ def getProjectionMatrix(znear, zfar, fovX, fovY, K, h, w):
         near_fx =  znear / K[0, 0]
         near_fy = znear / K[1, 1]
 
-        left = - (w - K[0, 2]) * near_fx
-        right = K[0, 2] * near_fx
-        bottom = (K[1, 2] - h) * near_fy
-        top = K[1, 2] * near_fy
+        left = - ((w - K[0, 2]) * near_fx).item()
+        right = (K[0, 2] * near_fx).item()
+        bottom = ((K[1, 2] - h) * near_fy).item()
+        top = (K[1, 2] * near_fy).item()
 
     P = torch.zeros(4, 4)
 
