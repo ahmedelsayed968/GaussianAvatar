@@ -1,0 +1,20 @@
+output/*
+outputs/*
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.data
+assets/*
+data/*
+content/*
+tmp/*
+
+models/*
+.keys/*
