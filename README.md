@@ -30,8 +30,10 @@ We present GaussianAvatar, an efficient approach to creating realistic human ava
 
 To deploy and run GaussianAvatar, run the following scripts:
 ```
-conda env create --file environment.yml
+conda create -n gs-avatar python=3.9
 conda activate gs-avatar
+chmod +x scripts/install_dependency.sh
+bash scripts/install_dependency.sh
 ```
 
 Then, compile ```diff-gaussian-rasterization``` and ```simple-knn``` as in [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) repository.
