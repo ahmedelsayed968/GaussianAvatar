@@ -1,12 +1,12 @@
-conda create -n gs-avatar python=3.9 && conda activate gs-avatar
+# conda create -n gs-avatar python=3.9 && conda activate gs-avatar
 
 # install pytorch3d
-conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
-conda install -c iopath iopath
-conda install -c bottler nvidiacub
+conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia -y
+conda install -c iopath iopath -y
+conda install -c bottler nvidiacub -y
 
 # before installing pytorch3d
-pip install --upgrade pip
+pip install --upgrade pip 
 pip install fvcore
 
 # now install pytorch3d safely
