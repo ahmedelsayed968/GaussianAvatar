@@ -73,7 +73,8 @@ class AvatarModel:
         
         ## query_map store the sampled points from the cannonical smpl mesh, shape as [512. 512, 3] 
         query_map = torch.from_numpy(np.load(query_map_path)['posmap' + str(self.model_parms.query_posmap_size)]).reshape(-1,3)
-        query_points = query_map[valid_idx, :].cuda().contiguous()
+        # query_map = query_map.cuda()
+        query_points = query_map[valid_idx.cpu(), :].cuda().contiguous()
         self.query_points = query_points[None].expand(self.batch_size, -1, -1)
         
         # we fix the opacity and rots of 3d gs as described in paper 
@@ -84,7 +85,7 @@ class AvatarModel:
         
         # we save the skinning weights from the cannonical mesh
         query_lbs = torch.from_numpy(np.load(query_lbs_path)).reshape(self.model_parms.query_posmap_size*self.model_parms.query_posmap_size, joint_num)
-        self.query_lbs = query_lbs[valid_idx, :][None].expand(self.batch_size, -1, -1).cuda().contiguous()
+        self.query_lbs = query_lbs[valid_idx.cpu(), :][None].expand(self.batch_size, -1, -1).cuda().contiguous()
         
         self.inv_mats = torch.linalg.inv(torch.load(mat_path)).expand(self.batch_size, -1, -1, -1).cuda()
         print('inv_mat shape: ', self.inv_mats.shape)
