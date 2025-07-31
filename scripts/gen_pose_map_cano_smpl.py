@@ -1,5 +1,6 @@
 
 
+import tqdm
 import numpy  as np
 import torch
 from os.path import join
@@ -12,8 +13,7 @@ from scipy.spatial.transform import Rotation as R
 import trimesh
 from utils.general_utils import load_masks, load_barycentric_coords, gen_lbs_weight_from_ori
 from arguments import smplx_cpose_param, smpl_cpose_param
-
-
+import cv2
 def render_posmap(v_minimal, faces, uvs, faces_uvs, img_size=32):
     '''
     v_minimal: vertices of the minimally-clothed SMPL body mesh
@@ -50,6 +50,60 @@ def render_posmap(v_minimal, faces, uvs, faces_uvs, img_size=32):
     assert len(face_id) == len(rendered_pos)
 
     return uv_pos, uv_mask, face_id
+
+
+def compute_barycentric_coords(pt, tri_uv):
+    v0 = tri_uv[1] - tri_uv[0]
+    v1 = tri_uv[2] - tri_uv[0]
+    v2 = np.array(pt) - tri_uv[0]
+
+    d00 = np.dot(v0, v0)
+    d01 = np.dot(v0, v1)
+    d11 = np.dot(v1, v1)
+    d20 = np.dot(v2, v0)
+    d21 = np.dot(v2, v1)
+
+    denom = d00 * d11 - d01 * d01
+    if abs(denom) < 1e-8:
+        return np.array([-1, -1, -1])
+
+    inv_denom = 1.0 / denom
+    w1 = (d11 * d20 - d01 * d21) * inv_denom
+    w2 = (d00 * d21 - d01 * d20) * inv_denom
+    w0 = 1.0 - w1 - w2
+    return np.array([w0, w1, w2])
+
+def render_posmap_cpu(vertices, faces, uvs, faces_uvs, img_size=512):
+    uv_coords = uvs.copy()
+    uv_coords[:, 0] *= (img_size - 1)
+    uv_coords[:, 1] *= (img_size - 1)
+    uv_coords[:, 1] = (img_size - 1) - uv_coords[:, 1]
+
+    posmap = np.zeros((img_size, img_size, 3), dtype=np.float32)
+    mask = np.zeros((img_size, img_size), dtype=np.uint8)
+
+    for f_idx, face in tqdm.tqdm(enumerate(faces), total=len(faces), desc="Rendering UV map"):
+        tri_uv_idx = faces_uvs[f_idx]
+        tri_vert_idx = face
+        tri_uv = uv_coords[tri_uv_idx]
+        tri_pos = vertices[tri_vert_idx]
+
+        contour = np.round(tri_uv).astype(np.int32)
+        triangle_mask = np.zeros((img_size, img_size), dtype=np.uint8)
+        cv2.fillConvexPoly(triangle_mask, contour, 1)
+
+        ys, xs = np.where(triangle_mask == 1)
+        if len(xs) == 0:
+            continue
+
+        for x, y in zip(xs, ys):
+            bc = compute_barycentric_coords((x, y), tri_uv)
+            if np.any(bc < -1e-4):
+                continue
+            posmap[y, x] = bc[0]*tri_pos[0] + bc[1]*tri_pos[1] + bc[2]*tri_pos[2]
+            mask[y, x] = 1
+
+    return posmap, mask
 
 def save_obj(data_path, name):
     smpl_data = torch.load( data_path + '/smpl_parms.pth')
@@ -91,7 +145,7 @@ def save_npz(data_path, res=128):
         result['posmap256'] = posmap256
 
     else:
-        posmap512, _, _ = render_posmap(body_mesh.vertices, body_mesh.faces, uvs, faces_uvs, img_size=512)
+        posmap512, _= render_posmap_cpu(body_mesh.vertices, body_mesh.faces, uvs, faces_uvs, img_size=512)
         result['posmap512'] = posmap512
 
     save_fn = join(data_path, 'query_posemap_%s_%s.npz'% (str(res), 'cano_smpl'))
@@ -100,10 +154,10 @@ def save_npz(data_path, res=128):
 
 
 if __name__ == '__main__':
-    smplx_parm_path = '' # path to the folder that include smpl params
+    smplx_parm_path = '/kaggle/working/GaussianAvatar/content/gs_3d_ava/train' # path to the folder that include smpl params
     parms_name = 'smpl_parms.pth'
     uv_template_fn = '../assets/template_mesh_smpl_uv.obj'
-    assets_path = ''    # path to the folder that include 'assets'
+    assets_path = '/kaggle/working/GaussianAvatar/assets'    # path to the folder that include 'assets'
 
     print('saving obj...')
     save_obj(smplx_parm_path, parms_name)
